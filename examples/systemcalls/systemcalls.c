@@ -1,3 +1,9 @@
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <fcntl.h>
+
 #include "systemcalls.h"
 
 /**
@@ -16,8 +22,10 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+  int ret = system(cmd);
 
-    return true;
+  if (ret <  0) return false;
+  return true;
 }
 
 /**
@@ -40,6 +48,8 @@ bool do_exec(int count, ...)
     va_start(args, count);
     char * command[count+1];
     int i;
+    pid_t pid;
+    
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
@@ -47,8 +57,9 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
+  
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -58,7 +69,27 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    pid = fork();
 
+    if (pid < 0) return false;
+
+    if (pid == 0) {
+      int ret = execv(command[0], command);
+      if (ret < 0)
+	exit(ret);
+    }
+
+    if (pid >0) {
+      int wstatus;
+      int status;
+
+      if (waitpid(pid, &wstatus, 0) < 0) return false;
+      
+      status = WEXITSTATUS(wstatus);
+      if (status != 0)
+	return false;
+    }
+    
     va_end(args);
 
     return true;
@@ -75,6 +106,9 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     va_start(args, count);
     char * command[count+1];
     int i;
+    int ret;
+    pid_t pid;
+    
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
@@ -82,7 +116,8 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
+
 
 
 /*
@@ -91,8 +126,40 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   redirect standard out to a file specified by outputfile.
  *   The rest of the behaviour is same as do_exec()
  *
-*/
+ */
+    pid = fork();
 
+    if (pid < 0)
+      return false;
+      
+    if (pid == 0) {
+      int fd = open(outputfile, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      if (fd < 0) {
+	perror("fopen:");
+	exit(-1);
+      }
+
+      ret = dup2(fd, 1);
+      close(fd);
+
+      if (ret < 0)
+	exit(-1);
+
+      ret = execv(command[0], command);
+      if (ret < 0)
+	exit(-1);
+    }
+
+    printf("Child process is %d\n", pid);
+    
+    {
+      int wstatus, status;
+      ret = waitpid(pid, &wstatus, 0);
+      status = WEXITSTATUS(wstatus);
+      if (status != 0)
+	return false;
+    }
+    
     va_end(args);
 
     return true;

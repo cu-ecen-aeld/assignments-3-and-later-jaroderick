@@ -10,10 +10,17 @@ int main(int argc, char *argv[])
   
   openlog(NULL, 0, LOG_USER);
 
-  if (argc < 3) {
-    syslog(LOG_ERR, "Usage: writer writefile writestring");
+  if (argc < 2) {
+    syslog(LOG_ERROR, "writer: no parameters specified");
     exit(1);
   }
+
+  
+  if (argc < 3) {
+    syslog(LOG_ERR, "writer: no write string specified");
+    exit(1);
+  }
+  
 
   fp = fopen(argv[1], "w");
   if (fp == NULL) {

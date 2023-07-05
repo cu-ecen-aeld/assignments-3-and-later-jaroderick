@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
   openlog(NULL, 0, LOG_USER);
 
   if (argc < 2) {
-    syslog(LOG_ERROR, "writer: no parameters specified");
+    syslog(LOG_ERR, "writer: no parameters specified");
     exit(1);
   }
 
